@@ -36,7 +36,7 @@ def convert(code, f, t):
 def chatbot(msg, chat):
     reply = ask_ai(msg)
     history_store.append("CHAT:\n" + reply)
-    chat = chat + [(msg, reply)]  # safer for remote deploy
+    chat = chat + [(msg, reply)]
     return "", chat
 
 def show_history():
@@ -67,7 +67,8 @@ button {
     border:none !important;
     border-radius:12px !important;
     font-weight:bold !important;
-    height:50px;
+    height:60px;
+    font-size:18px;
     transition:.3s;
 }
 button:hover {
@@ -84,60 +85,102 @@ button:hover {
     border-radius:18px;
     padding:25px;
 }
+.block-button {
+    width:100%;
+    height:120px;
+    font-size:24px;
+    margin:15px 0;
+}
+
+/* Smooth transitions */
+.fade {
+    transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+}
+.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+}
+.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+}
 """
 
 # ================= UI =================
 with gr.Blocks(css=css) as app:
-    gr.Markdown("# 🚀 CodeRefine AI")
 
-    with gr.Row():
-        # ===== SIDEBAR =====
-        with gr.Column(scale=1, elem_classes="sidebar"):
-            gr.Markdown("### ⚡ Features")
-            gr.Markdown("""
-• Refine Code  
-• Optimize Performance  
-• Convert Languages  
-• AI Coding Chatbot  
-• Full History Tracking  
-""")
+    # FRONT PAGE
+    with gr.Column(visible=True, elem_classes="fade visible") as front_page:
+        gr.Markdown("# 🚀 CodeRefine AI")
+        gr.Markdown("### Select a tool to get started:")
+        refine_btn = gr.Button("✨ Refine / Optimize Code", elem_classes="block-button")
+        convert_btn = gr.Button("🔄 Convert Code", elem_classes="block-button")
+        chat_btn = gr.Button("🤖 AI Chatbot", elem_classes="block-button")
 
-        # ===== MAIN AREA =====
-        with gr.Column(scale=4):
-            with gr.Tabs():
+    # ================= REFINE/OPTIMIZE TAB =================
+    with gr.Column(visible=False, elem_classes="fade hidden") as refine_tab:
+        gr.Markdown("### ✨ Refine / Optimize Code")
+        back1 = gr.Button("⬅ Back to Home")
+        code1 = gr.Code(lines=12, label="Paste code here")
+        lang1 = gr.Dropdown(LANGS, label="Language")
+        out1 = gr.Code(label="Refined Code")
+        refine_btn_tab = gr.Button("Refine with AI")
+        refine_btn_tab.click(refine, [code1, lang1], out1)
+        optimize_btn_tab = gr.Button("Optimize with AI")
+        optimize_btn_tab.click(optimize, [code1, lang1], out1)
 
-                # ===== REFINE =====
-                with gr.Tab("✨ Refine"):
-                    code1 = gr.Code(lines=12, label="Paste code here")
-                    lang1 = gr.Dropdown(LANGS, label="Language")
-                    out1 = gr.Code(label="Refined Code")
-                    gr.Button("Refine with AI").click(refine, [code1, lang1], out1)
+    # ================= CONVERT TAB =================
+    with gr.Column(visible=False, elem_classes="fade hidden") as convert_tab:
+        gr.Markdown("### 🔄 Convert Code")
+        back2 = gr.Button("⬅ Back to Home")
+        code2 = gr.Code(lines=12, label="Paste code here")
+        f = gr.Dropdown(LANGS, label="From")
+        t = gr.Dropdown(LANGS, label="To")
+        out2 = gr.Code(label="Converted Code")
+        convert_btn_tab = gr.Button("Convert with AI")
+        convert_btn_tab.click(convert, [code2, f, t], out2)
 
-                # ===== OPTIMIZE =====
-                with gr.Tab("⚡ Optimize"):
-                    code2 = gr.Code(lines=12, label="Paste code here")
-                    lang2 = gr.Dropdown(LANGS, label="Language")
-                    out2 = gr.Code(label="Optimized Code")
-                    gr.Button("Optimize with AI").click(optimize, [code2, lang2], out2)
+    # ================= CHATBOT TAB =================
+    with gr.Column(visible=False, elem_classes="fade hidden") as chat_tab:
+        gr.Markdown("### 🤖 AI Chatbot")
+        back3 = gr.Button("⬅ Back to Home")
+        chatbot_ui = gr.Chatbot(height=420, label="Chat with AI")
+        msg = gr.Textbox(placeholder="Ask coding questions...", label="Your Message")
+        msg.submit(chatbot, [msg, chatbot_ui], [msg, chatbot_ui])
 
-                # ===== CONVERT =====
-                with gr.Tab("🔄 Convert"):
-                    code3 = gr.Code(lines=12, label="Paste code here")
-                    f = gr.Dropdown(LANGS, label="From")
-                    t = gr.Dropdown(LANGS, label="To")
-                    out3 = gr.Code(label="Converted Code")
-                    gr.Button("Convert with AI").click(convert, [code3, f, t], out3)
+    # ================= HISTORY TAB (optional) =================
+    with gr.Column(visible=False, elem_classes="fade hidden") as history_tab:
+        gr.Markdown("### 📜 History")
+        back4 = gr.Button("⬅ Back to Home")
+        history_box = gr.Textbox(lines=20, label="History")
+        load_history_btn = gr.Button("Load History")
+        load_history_btn.click(show_history, None, history_box)
 
-                # ===== CHATBOT =====
-                with gr.Tab("🤖 AI Chatbot"):
-                    chatbot_ui = gr.Chatbot(height=420, label="Chat with AI")
-                    msg = gr.Textbox(placeholder="Ask coding questions...", label="Your Message")
-                    msg.submit(chatbot, [msg, chatbot_ui], [msg, chatbot_ui])
+    # ================= NAVIGATION LOGIC =================
+    def show_columns(front, refine_c, convert_c, chat_c, history_c):
+        return (
+            front, refine_c, convert_c, chat_c, history_c
+        )
 
-                # ===== HISTORY =====
-                with gr.Tab("📜 History"):
-                    history_box = gr.Textbox(lines=20, label="History")
-                    gr.Button("Load History").click(show_history, None, history_box)
+    # Front page buttons
+    refine_btn.click(lambda: show_columns(False, True, False, False, False),
+                     [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
+    convert_btn.click(lambda: show_columns(False, False, True, False, False),
+                      [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
+    chat_btn.click(lambda: show_columns(False, False, False, True, False),
+                   [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
+
+    # Back buttons
+    back1.click(lambda: show_columns(True, False, False, False, False),
+                [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
+    back2.click(lambda: show_columns(True, False, False, False, False),
+                [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
+    back3.click(lambda: show_columns(True, False, False, False, False),
+                [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
+    back4.click(lambda: show_columns(True, False, False, False, False),
+                [], [front_page, refine_tab, convert_tab, chat_tab, history_tab])
 
 # ================= LAUNCH =================
 if __name__ == "__main__":
@@ -146,5 +189,5 @@ if __name__ == "__main__":
     app.launch(
         server_name="0.0.0.0",
         server_port=7860,
-        share=True  # REQUIRED for Render
+        share=True
     )
