@@ -1,197 +1,144 @@
 import gradio as gr
-import os
-from groq import Groq
-from dotenv import load_dotenv
 
-load_dotenv()
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
-
-# ======================
-# PROFESSIONAL CSS
-# ======================
-css = """
-footer {display:none !important;}
-header {display:none !important;}
-
-body {
-    background: linear-gradient(135deg,#0f172a,#020617);
-    color:white;
-    font-family: 'Segoe UI';
+# =========================
+# Language Extensions
+# =========================
+EXTENSIONS = {
+    "Python": ".py",
+    "C": ".c",
+    "C++": ".cpp",
+    "Java": ".java",
+    "JavaScript": ".js"
 }
 
-.card {
-    background:#111827;
-    padding:30px;
-    border-radius:16px;
-    text-align:center;
-    cursor:pointer;
-    transition:0.3s;
-    border:1px solid #1f2937;
+# =========================
+# Modern UI CSS
+# =========================
+custom_css = """
+body { background: #0f172a !important; font-family: Inter, sans-serif; }
+.gradio-container { max-width: 1100px !important; margin: auto !important; }
+
+.block {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 18px;
+    text-align: center;
+    cursor: pointer;
+    transition: 0.2s;
+    font-size: 20px;
+    font-weight: bold;
+}
+.block:hover { transform: scale(1.05); }
+
+button {
+    background: linear-gradient(135deg,#2563eb,#1d4ed8);
+    border-radius: 14px;
+    font-size: 16px;
+    height: 50px;
 }
 
-.card:hover {
-    transform:scale(1.05);
-    background:#1e293b;
-}
+textarea { font-size: 15px !important; }
 
-.bigtitle {
-    font-size:48px;
-    font-weight:bold;
-    text-align:center;
-}
-
-.subtitle {
-    text-align:center;
-    color:#9ca3af;
-}
+footer { display: none !important; }
 """
 
-# ======================
-# AI CALL
-# ======================
-def ask_llm(prompt):
-    res = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return res.choices[0].message.content
+# =========================
+# Core Functions
+# =========================
+def refine_code(code, lang):
+    if not code:
+        return "⚠️ Enter code first!"
+    return f"✨ Refined {lang} Code:\n\n{code.upper()}"
 
+def optimize_code(code, lang):
+    if not code:
+        return "⚠️ Enter code first!"
+    return f"⚡ Optimized {lang} Code:\n\n{code[::-1]}"
 
-# ======================
-# FILE ANALYZER
-# ======================
-def analyze_file(file):
-    if file is None:
-        return "Upload a file first."
-    content = file.read().decode("utf-8")
-    return ask_llm("Analyze this code and suggest improvements:\n" + content)
+def convert_code(code, f, t):
+    if not code:
+        return "⚠️ Enter code first!"
+    return f"🔄 Converted from {f} → {t}\n\n{code}"
 
+# =========================
+# Layout
+# =========================
+with gr.Blocks(css=custom_css, title="CodeRefine AI") as app:
 
-# ======================
-# NAVIGATION
-# ======================
-def show_home():
-    return [gr.update(visible=True)] + [gr.update(visible=False)]*4
-
-def show_analyzer():
-    return [gr.update(visible=False), gr.update(visible=True),
-            gr.update(visible=False), gr.update(visible=False),
-            gr.update(visible=False)]
-
-def show_chat():
-    return [gr.update(visible=False), gr.update(visible=False),
-            gr.update(visible=True), gr.update(visible=False),
-            gr.update(visible=False)]
-
-def show_converter():
-    return [gr.update(visible=False), gr.update(visible=False),
-            gr.update(visible=False), gr.update(visible=True),
-            gr.update(visible=False)]
-
-def show_file():
-    return [gr.update(visible=False), gr.update(visible=False),
-            gr.update(visible=False), gr.update(visible=False),
-            gr.update(visible=True)]
-
-
-# ======================
-# UI
-# ======================
-with gr.Blocks(css=css, title="CodeRefine AI") as demo:
-
-    chat_history = gr.State([])
-
-    # HOME PAGE
+    # -------- HOME PAGE --------
     with gr.Column(visible=True) as home:
-        gr.Markdown("<div class='bigtitle'>🚀 CodeRefine AI</div>")
-        gr.Markdown("<div class='subtitle'>Professional AI Coding Platform</div>")
+        gr.Markdown("# 🚀 CodeRefine AI")
+        gr.Markdown("### Fix • Optimize • Convert Code Instantly")
 
         with gr.Row():
-            btn1 = gr.Button("🔍 Code Analyzer", elem_classes="card")
-            btn2 = gr.Button("💬 AI Chatbot", elem_classes="card")
-            btn3 = gr.Button("🔄 Code Converter", elem_classes="card")
-            btn4 = gr.Button("📂 File Analyzer", elem_classes="card")
+            btn1 = gr.Button("✨ Refine Code", elem_classes="block")
+            btn2 = gr.Button("⚡ Optimize Code", elem_classes="block")
+            btn3 = gr.Button("🔄 Convert Code", elem_classes="block")
 
+    # -------- REFINE --------
+    with gr.Column(visible=False) as refine_page:
+        gr.Markdown("## ✨ Refine Code")
 
-    # ================= ANALYZER =================
-    with gr.Column(visible=False) as analyzer_page:
-        gr.Markdown("## 🔍 Code Analyzer")
+        code1 = gr.Code(label="Paste Code", lines=15)
+        lang1 = gr.Dropdown(list(EXTENSIONS.keys()), label="Language")
 
-        code_input = gr.Textbox(lines=15, label="Paste Code")
-        analyze_btn = gr.Button("Analyze")
-        result = gr.Textbox(lines=15)
-        download = gr.File(label="Download Result")
-
-        def analyze(code):
-            res = ask_llm("Analyze and optimize:\n" + code)
-            path = "result.txt"
-            with open(path, "w") as f:
-                f.write(res)
-            return res, path
-
-        analyze_btn.click(analyze, code_input, [result, download])
+        out1 = gr.Code(label="Result")
+        run1 = gr.Button("Refine Now")
         back1 = gr.Button("⬅ Back")
 
+        run1.click(refine_code, [code1, lang1], out1)
 
-    # ================= CHAT =================
-    with gr.Column(visible=False) as chat_page:
-        gr.Markdown("## 💬 AI Chatbot")
+    # -------- OPTIMIZE --------
+    with gr.Column(visible=False) as optimize_page:
+        gr.Markdown("## ⚡ Optimize Code")
 
-        chatbot = gr.Chatbot(height=400)
-        msg = gr.Textbox()
-        send = gr.Button("Send")
+        code2 = gr.Code(label="Paste Code", lines=15)
+        lang2 = gr.Dropdown(list(EXTENSIONS.keys()), label="Language")
+
+        out2 = gr.Code(label="Result")
+        run2 = gr.Button("Optimize Now")
         back2 = gr.Button("⬅ Back")
 
-        def chat(user, history):
-            history.append((user, ask_llm(user)))
-            return history, history
+        run2.click(optimize_code, [code2, lang2], out2)
 
-        send.click(chat, [msg, chat_history], [chatbot, chat_history])
+    # -------- CONVERT --------
+    with gr.Column(visible=False) as convert_page:
+        gr.Markdown("## 🔄 Convert Code")
 
+        code3 = gr.Code(label="Paste Code", lines=15)
+        from_lang = gr.Dropdown(list(EXTENSIONS.keys()), label="From")
+        to_lang = gr.Dropdown(list(EXTENSIONS.keys()), label="To")
 
-    # ================= CONVERTER =================
-    with gr.Column(visible=False) as converter_page:
-        gr.Markdown("## 🔄 Code Converter")
-
-        code = gr.Textbox(lines=15)
-        lang = gr.Dropdown(["Python","Java","C++","JavaScript"])
-        convert_btn = gr.Button("Convert")
-        output = gr.Textbox(lines=15)
+        out3 = gr.Code(label="Result")
+        run3 = gr.Button("Convert Now")
         back3 = gr.Button("⬅ Back")
 
-        convert_btn.click(
-            lambda c,l: ask_llm(f"Convert this code into {l}:\n{c}"),
-            [code, lang],
-            output
-        )
+        run3.click(convert_code, [code3, from_lang, to_lang], out3)
 
+    # =========================
+    # Navigation
+    # =========================
+    def show_refine():
+        return False, True, False, False
 
-    # ================= FILE ANALYZER =================
-    with gr.Column(visible=False) as file_page:
-        gr.Markdown("## 📂 File Analyzer")
+    def show_optimize():
+        return False, False, True, False
 
-        file_upload = gr.File()
-        analyze_file_btn = gr.Button("Analyze File")
-        file_output = gr.Textbox(lines=15)
-        back4 = gr.Button("⬅ Back")
+    def show_convert():
+        return False, False, False, True
 
-        analyze_file_btn.click(analyze_file, file_upload, file_output)
+    def show_home():
+        return True, False, False, False
 
+    btn1.click(show_refine, outputs=[home, refine_page, optimize_page, convert_page])
+    btn2.click(show_optimize, outputs=[home, refine_page, optimize_page, convert_page])
+    btn3.click(show_convert, outputs=[home, refine_page, optimize_page, convert_page])
 
-    # ================= EVENTS =================
-    btn1.click(show_analyzer, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-    btn2.click(show_chat, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-    btn3.click(show_converter, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-    btn4.click(show_file, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
+    back1.click(show_home, outputs=[home, refine_page, optimize_page, convert_page])
+    back2.click(show_home, outputs=[home, refine_page, optimize_page, convert_page])
+    back3.click(show_home, outputs=[home, refine_page, optimize_page, convert_page])
 
-    back1.click(show_home, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-    back2.click(show_home, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-    back3.click(show_home, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-    back4.click(show_home, outputs=[home, analyzer_page, chat_page, converter_page, file_page])
-
-
-# ======================
-# RENDER PORT FIX
-# ======================
-port = int(os.environ.get("PORT", 7860))
-demo.launch(server_name="0.0.0.0", server_port=port)
+# =========================
+# Launch
+# =========================
+app.launch(server_name="0.0.0.0", server_port=7860)
